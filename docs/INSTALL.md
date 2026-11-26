@@ -4,7 +4,9 @@ Codex의 로컬 플러그인으로 프로젝트 위키를 조회하고, 이전 �
 
 ## 설치
 
-Linux 또는 Windows의 WSL에서 Python 3.11 이상과 `codex plugin add`를 지원하는 Codex CLI가 필요합니다. Node 없이 설치하려면 소스를 받아 아래 명령을 실행합니다. GitHub의 **Code → Download ZIP**으로 받아 압축을 풀어도 됩니다.
+Claude Code에서는 실제 연결 상태를 확인했습니다. OpenCode 2.3.0에서는 설정 파일 등록을 확인했으며 연결 목록 표시는 아직 검증 중입니다.
+
+로컬 서비스는 Linux 또는 Windows WSL에서 Python 3.11 이상으로 실행합니다. Codex 플러그인을 선택할 때는 `codex plugin add`를 지원하는 Codex CLI도 필요합니다. Node 없이 설치하려면 소스를 받아 아래 명령을 실행합니다. GitHub의 **Code → Download ZIP**으로 받아 압축을 풀어도 됩니다.
 
 ```sh
 git clone https://github.com/smilish67/makara.git
@@ -15,6 +17,20 @@ python3 scripts/install_plugin.py
 Windows PC 앱이 WSL 에이전트 환경을 쓰는 경우에는 같은 WSL 배포판에서 마지막 명령을 `python3 scripts/install_plugin.py --windows-app`으로 실행합니다. 설치 후 앱을 다시 열고 새 대화에서 `$makara:makara`를 선택합니다. 호스트가 훅 신뢰 확인을 표시하면 해당 훅을 검토합니다.
 
 기존 Makara 서비스가 있으면 설치기는 그 서비스와 vault를 재사용합니다. 처음 설치하면 사용자 홈의 `MakaraVault`에 Markdown을, `~/.local/share/makara`에 서비스 설정과 인증 파일을 두고 로컬 서버를 시작합니다. 첫 설치에서 vault를 선택하려면 `--vault "/원하는/vault"`를 추가합니다. 새 설치의 기본값에서는 대화를 자동 수집할 폴더가 비어 있습니다. 재부팅 후 직접 실행형 서비스가 꺼졌으면 설치 명령을 다시 실행할 수 있습니다.
+
+## 다른 MCP 클라이언트에서 사용하기
+
+`python3 scripts/install_plugin.py --client mcp --provider anthropic`는 Codex 없이 서비스를 시작하고 `mcpServers.makara`의 실행 명령과 인자, 설정 파일 경로를 출력합니다. 프로젝트를 지정하려면 `--project-dir`를 추가하세요. 이 모드에서는 프로젝트 접근 범위만 설정합니다. 대화 수집 훅은 등록하지 않습니다. 도구로 명시적으로 자료를 저장하거나 사용자 요청에 따라 위키를 갱신할 수 있습니다.
+
+- **Claude Code** — Linux/WSL에서 아래처럼 생성된 항목을 등록합니다. 현재 프로젝트에만 적용되며 설정 파일에는 인증 파일의 경로가 들어갑니다.
+- **OpenCode** — 실제 모델 제공자를 지정해 설치합니다(예: `--provider deepseek`). 출력된 `command`와 `args`를 순서대로 `opencode mcp add makara -- <command> <args...>`에 전달하고 `opencode mcp list`로 확인합니다. [OpenCode MCP 안내](https://opencode.ai/docs/mcp-servers/)
+- **Windows 네이티브 클라이언트** — PowerShell의 npx 명령은 WSL 실행 명령을 출력합니다. 클라이언트가 WSL 안에서 실행된다면 WSL 터미널에서 설치해 Linux 실행 명령을 받으세요.
+
+```sh
+python3 -c 'import json,pathlib,sys; p=pathlib.Path.home()/".local/share/makara/mcp-anthropic.json"; json.dump(json.loads(p.read_text())["mcpServers"]["makara"],sys.stdout)' | claude mcp add-json makara -
+```
+
+`--provider`는 조회 권한을 구분하는 데 사용합니다. 실행 호스트가 실제 사용하는 제공자와 일치시켜야 하며, 제공자를 바꾸면 그에 맞는 연결을 선택하세요. 기존 출처의 공개 범위는 자동으로 확대되지 않습니다. 스킬 파일 검색 방식과 자동 대화 수집은 각 호스트에 따라 다릅니다.
 
 ## 대화 수집과 Honcho 선택
 

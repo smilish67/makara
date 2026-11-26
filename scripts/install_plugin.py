@@ -4,6 +4,8 @@ import argparse
 import fcntl
 import json
 import os
+import re
+import secrets
 from pathlib import Path
 import shutil
 import signal
@@ -17,12 +19,35 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from makara.capture import project_scope, resolve_target
 from makara.client import Client
-from makara.core import Error, atomic
+from makara.core import Error, atomic, digest
 from makara.memory import Honcho
 
 
 def write_json(path, value):
     atomic(path, json.dumps(value, ensure_ascii=False, indent=2) + '\n')
+
+
+def mcp_identity(home, config, provider, scope):
+    handles = {'openai': 'agent-a', 'anthropic': 'agent-b'}
+    handle = handles.get(provider, 'mcp-' + provider)
+    token_file = home / (handle + '.token')
+    if not token_file.exists():
+        if handle in handles.values() or any(p['id'] == handle for p in config['principals'].values()):
+            raise SystemExit('Missing token for an existing identity; restore it before continuing')
+        atomic(token_file, secrets.token_urlsafe(32))
+    key = digest(token_file.read_text().strip())
+    actors = config['principals']
+    if key not in actors and handle not in handles.values():
+        actors[key] = dict(id=handle, subject='self', provider=provider, read=[], write=[], approve=[], delete=[])
+    principal = actors.get(key, {})
+    if principal.get('id') != handle or principal.get('provider') != provider:
+        raise SystemExit('Token and configured provider do not match')
+    for action in ('read', 'write'):
+        if scope not in principal[action]:
+            principal[action].append(scope)
+    if provider not in config['providers']:
+        config['providers'].append(provider)
+    return token_file
 
 
 def prepare(home, args):
@@ -99,19 +124,23 @@ def prepare(home, args):
             if 'honcho' not in providers:
                 providers.append('honcho')
         for principal in config['principals'].values():
-            actions = {'agent-a': ['read', 'write'], 'owner': ['read', 'write', 'approve', 'delete']}
+            actions = {'owner': ['read', 'write', 'approve', 'delete']}
+            if args.client == 'codex':
+                actions['agent-a'] = ['read', 'write']
             for action in actions.get(principal['id'], []):
                 if scope not in principal[action]:
                     principal[action].append(scope)
-        projects[str(root)] = dict(target, enabled=True, scope=scope, include_children=target.get('include_children', True),
-                                   allowed_providers=providers)
-        projects[str(root)].pop('project_root', None)
+        if args.client == 'codex':
+            projects[str(root)] = dict(target, enabled=True, scope=scope, include_children=target.get('include_children', True),
+                                       allowed_providers=providers)
+            projects[str(root)].pop('project_root', None)
+    token_file = mcp_identity(home, config, args.provider, scope) if args.client == 'mcp' else home / 'agent-a.token'
     changed = before != json.dumps(config, sort_keys=True)
     if changed:
         write_json(config_path, config)
-    if root or not policy_file.exists():
+    if (root and args.client == 'codex') or not policy_file.exists():
         write_json(policy_file, policy)
-    return changed, config
+    return changed, config, token_file
 
 
 def start_service(home, config, changed):
@@ -150,7 +179,10 @@ def start_service(home, config, changed):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--project-dir', type=Path, help='Opt in to capture for this project directory')
+    parser.add_argument('--client', choices=['codex', 'mcp'], default='codex',
+                        help='Install the Codex plugin or generate a portable stdio MCP connection')
+    parser.add_argument('--provider', help='Model provider allowed to read this MCP connection')
+    parser.add_argument('--project-dir', type=Path, help='Select a project scope (also opts into automatic capture for Codex)')
     parser.add_argument('--vault', type=Path, help='Markdown directory on first installation')
     parser.add_argument('--honcho-url', help='Honcho API base URL, without /v3')
     parser.add_argument('--honcho-token-file', type=Path, help='Path to bearer token on the service machine')
@@ -158,17 +190,38 @@ def main():
     parser.add_argument('--windows-app', action='store_true', help='Install into the Windows desktop app using WSL')
     args = parser.parse_args()
     codex = shutil.which('codex')
-    if not codex:
-        parser.error('Codex CLI with plugin support is required')
+    if args.client == 'mcp':
+        if not re.fullmatch(r'[a-z][a-z0-9_-]{0,39}', args.provider or '') or args.provider in {'local', 'owner', 'honcho'}:
+            parser.error('--client mcp requires --provider with the actual model provider, e.g. anthropic')
+    elif args.provider:
+        parser.error('--provider applies to --client mcp')
+    elif not codex:
+        parser.error('Install Codex for its plugin or choose --client mcp --provider PROVIDER')
     home = Path(os.environ.get('MAKARA_HOME', Path.home() / '.local/share/makara')).expanduser().resolve()
     home.mkdir(parents=True, exist_ok=True, mode=0o700)
     with (home / '.install.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        changed, config = prepare(home, args)
+        changed, config, token_file = prepare(home, args)
         runtime = home / 'runtime/makara'
         shutil.copytree(REPO / 'makara', runtime, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
         status = start_service(home, config, changed)
-        if args.windows_app:
+        if args.client == 'mcp':
+            identity = Client(home, token_file).request('status', {})
+            if identity.get('provider') != args.provider:
+                raise SystemExit('Restart Makara to load the selected provider identity')
+            launcher = home / 'runtime/scripts/run_mcp.py'
+            launcher.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(REPO / 'scripts/run_mcp.py', launcher)
+            command = [sys.executable, str(launcher), '--home', str(home), '--token-file', str(token_file)]
+            if args.windows_app:
+                command = ['wsl.exe', '--distribution', os.environ['WSL_DISTRO_NAME'], '--user',
+                           Path.home().name, '--exec', *command]
+            snippet = {'mcpServers': {'makara': {'command': command[0], 'args': command[1:]}}}
+            output = home / f'mcp-{args.provider}.json'
+            write_json(output, snippet)
+            print(f'MCP connection settings: {output}')
+            print(json.dumps(snippet, ensure_ascii=False, indent=2))
+        elif args.windows_app:
             distro = os.environ.get('WSL_DISTRO_NAME')
             if not distro:
                 parser.error('--windows-app runs inside the Windows app’s WSL distribution')

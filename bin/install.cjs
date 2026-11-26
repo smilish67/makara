@@ -9,7 +9,7 @@ if (process.platform === "win32") {
   // The Windows app and its knowledge service share the user's WSL distribution.
   const converted = spawnSync("wsl.exe", ["--exec", "wslpath", "-u", installer], { encoding: "utf8" });
   if (converted.error || converted.status !== 0) {
-    console.error("Makara requires a working WSL distribution with Python 3.11+ and Codex installed.");
+    console.error("Makara requires a working WSL distribution with Python 3.11+ installed.");
     process.exit(1);
   }
   result = spawnSync("wsl.exe", ["--exec", "python3", converted.stdout.trim(), "--windows-app", ...options], { stdio: "inherit" });
