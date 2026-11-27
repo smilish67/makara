@@ -61,3 +61,7 @@ Codex 설치기는 로컬 Makara 서비스를 준비하고 Codex의 마켓플레
 Python 런타임은 표준 라이브러리를 사용합니다. 저장소에서 `python3 -m unittest discover -s tests -v`로 테스트를 실행할 수 있습니다. 로컬 설치 문제를 제보할 때는 실행 환경과 오류 메시지에서 인증정보를 지운 뒤 [이슈](https://github.com/smilish67/makara/issues)에 남겨주세요.
 
 Makara는 [Apache License 2.0](LICENSE)으로 배포합니다. Honcho는 별도로 운영하는 선택적 서비스입니다.
+
+## 마카라 플라네타리움
+
+“자료를 조사하고 첫 시안을 만드는 데 각각 얼마나 썼을까?” 플라네타리움에서 Windows·Linux의 Codex, Claude Code, OpenCode 2 작업 기록을 시간순으로 펼치고, 서로 다른 에이전트가 이어서 한 일을 같은 작업으로 묶어 토큰 사용량을 볼 수 있습니다. 별도의 로컬 서비스이며 브라우저를 닫아도 Docker에서 계속 수집합니다. [설치와 사용법](docs/PLANETARIUM.md)

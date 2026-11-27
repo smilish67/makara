@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>마카라 플라네타리움</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script defer src="/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="identity">
+        <span class="orbit" aria-hidden="true">✦</span
+        ><span>Makara <b>Planetarium</b></span>
+      </div>
+      <details id="health">
+        <summary id="sync">수집 상태 확인 중</summary>
+        <div id="sources"></div>
+      </details>
+    </header>
+    <main>
+      <section class="heading">
+        <div>
+          <h1>작업 관측소</h1>
+          <p>에이전트의 실행 경로와 토큰 사용량</p>
+        </div>
+        <span class="period">전체 기록</span>
+      </section>
+      <section class="metrics">
+        <article>
+          <small>기록된 세션</small><strong id="sessionCount">—</strong>
+        </article>
+        <article>
+          <small>도구 이벤트</small><strong id="tools">—</strong>
+        </article>
+        <article>
+          <small>기록된 토큰</small><strong id="total">—</strong
+          ><small id="coverage"></small>
+        </article>
+        <article class="distribution">
+          <small>에이전트별 토큰 비중</small
+          ><canvas id="bar" aria-label="에이전트별 토큰 비중"></canvas>
+          <div id="legend"></div>
+        </article>
+      </section>
+      <nav>
+        <button class="tab on" id="sessionsTab">세션</button
+        ><button class="tab" id="tasksTab">작업별 사용량</button>
+      </nav>
+      <div id="taskview" hidden></div>
+      <section id="sessionview" class="workspace">
+        <aside>
+          <div class="filters">
+            <input
+              id="search"
+              type="search"
+              placeholder="세션·프로젝트·작업 검색"
+              aria-label="세션 검색"
+            /><select id="agent" aria-label="에이전트">
+              <option value="">전체 에이전트</option>
+              <option>Codex</option>
+              <option>Claude</option>
+              <option>OpenCode</option>
+            </select>
+          </div>
+          <p id="resultcount"></p>
+          <div id="list"></div>
+          <button id="moreSessions" hidden>세션 더 보기</button>
+        </aside>
+        <section class="viewer">
+          <div id="empty">세션을 선택하면 실행 기록이 열립니다.</div>
+          <div id="detail" hidden>
+            <div class="eyebrow" id="agentname"></div>
+            <h2 id="title"></h2>
+            <div id="project" class="muted"></div>
+            <div id="family"></div>
+            <div class="facts" id="facts"></div>
+            <form id="assignment">
+              <label for="task">작업으로 묶기</label>
+              <div>
+                <input
+                  id="task"
+                  maxlength="100"
+                  list="tasknames"
+                  placeholder="작업 이름 입력 또는 선택"
+                /><datalist id="tasknames"></datalist><button>적용</button>
+              </div>
+              <small id="assignnote"></small>
+            </form>
+            <h3>실행 타임라인</h3>
+            <div class="toolbar">
+              <select id="turn" aria-label="작업 턴"></select
+              ><select id="kind" aria-label="이벤트 종류">
+                <option value="">전체 이벤트</option>
+                <option value="request">사용자 요청</option>
+                <option value="tool">도구 실행</option>
+                <option value="usage">토큰 사용</option>
+                <option value="answer">응답</option>
+                <option value="status">진행 상태</option>
+              </select>
+            </div>
+            <div id="events"></div>
+            <button id="more" hidden>다음 이벤트 보기</button>
+          </div>
+        </section>
+      </section>
+    </main>
+    <div id="notice" role="status"></div>
+  </body>
+</html>
