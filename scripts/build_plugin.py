@@ -15,7 +15,7 @@ def build(destination, archive=True):
     def write(path,value):
         path.parent.mkdir(parents=True,exist_ok=True)
         path.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
-    write(root/'plugin.json',{'$schema':'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json','name':'makara','version':'0.4.2',
+    write(root/'plugin.json',{'$schema':'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json','name':'makara','version':'0.4.3',
         'description':'프로젝트의 결정과 근거를 찾아 다음 시안에 활용합니다. 허용한 대화를 수집하고 요청한 내용을 위키에 정리합니다.',
         'extensions':{'com.openai':{'requires_local_executor':True,'hooks':'./hooks/hooks.json',
             'interface':{'displayName':'Makara','shortDescription':'프로젝트 경험과 판단 기억을 이어서 활용','category':'Productivity',

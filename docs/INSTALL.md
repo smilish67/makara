@@ -9,7 +9,7 @@ Claude Code에서는 실제 연결 상태를 확인했습니다. OpenCode 2.3.0�
 로컬 서비스는 Linux 또는 Windows WSL에서 Python 3.11 이상으로 실행합니다. Codex 플러그인을 선택할 때는 `codex plugin add`를 지원하는 Codex CLI도 필요합니다. Node 없이 설치하려면 소스를 받아 아래 명령을 실행합니다. GitHub의 **Code → Download ZIP**으로 받아 압축을 풀어도 됩니다.
 
 ```sh
-git clone https://github.com/Makara-space/makara.git
+git clone https://github.com/smilish67/makara.git
 cd makara
 python3 scripts/install_plugin.py
 ```
@@ -58,4 +58,4 @@ Honcho는 **선택적인 서버 의존성**입니다. API와 기억 추론 워�
 
 새 대화에서 “마카라 수집 상태와 현재 프로젝트 범위를 확인해줘”라고 요청합니다. 저장소에서 `python3 scripts/check_plugin.py <설치된-플러그인-폴더>`를 실행하면 MCP 인증 연결을 확인할 수 있습니다. 훅은 대화를 수집하고, 새 컨셉에서 질문을 꺼내는 일은 스킬을 읽은 에이전트가 맡습니다. Honcho 워커가 추론을 마쳐야 새 기억을 조회할 수 있습니다.
 
-이미 Makara 서비스가 있는 Linux 환경을 위한 플러그인 ZIP은 [릴리스](https://github.com/Makara-space/makara/releases)에서 받을 수 있습니다. 새 PC나 Windows PC 앱에서는 위 설치기를 사용하면 서비스와 호스트별 실행 경로까지 설정됩니다.
+이미 Makara 서비스가 있는 Linux 환경을 위한 플러그인 ZIP은 [릴리스](https://github.com/smilish67/makara/releases)에서 받을 수 있습니다. 새 PC나 Windows PC 앱에서는 위 설치기를 사용하면 서비스와 호스트별 실행 경로까지 설정됩니다.
