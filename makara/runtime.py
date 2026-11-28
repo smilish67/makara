@@ -16,9 +16,10 @@ def tick(store, port):
 
 
 def start_worker(store, port, stop):
-    from .memory import migrate_legacy_history
+    from .memory import migrate_legacy_history, separate_orca_notices
     with store.lock():
         migrate_legacy_history(store)
+        separate_orca_notices(store)
     def loop():
         while not stop.wait(5):
             try:

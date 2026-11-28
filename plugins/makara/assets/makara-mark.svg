@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512" role="img" aria-labelledby="title desc">
+  <title id="title">Makara</title>
+  <desc id="desc">Two waves meet in the spine of an open book.</desc>
+  <rect width="256" height="256" rx="52" fill="#142d38"/>
+  <path d="M33 74c33-12 66-4 91 23v77c-26-24-57-33-91-23z" fill="#a5dec7"/>
+  <path d="M223 66c-40-4-71 12-91 39v69c23-25 52-40 91-40z" fill="#fff0ce"/>
+  <path d="M33 168c34-9 66 0 95 27 23-28 55-44 95-46" fill="none" stroke="#75bca7" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,10 +1,10 @@
 {
   "name": "@smilish67/makara",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "Local-first project memory and Markdown knowledge for MCP agents, with a Codex plugin.",
   "license": "Apache-2.0",
-  "repository": "github:smilish67/makara",
+  "repository": "github:Makara-space/makara",
   "bin": { "makara": "bin/install.cjs" },
   "files": ["bin", "scripts/build_plugin.py", "scripts/run_mcp.py", "scripts/check_plugin.py", "scripts/install_plugin.py", "scripts/install_desktop_plugin.py", "makara/*.py", "plugins/makara", "docs/CONCEPT_WORKFLOW.md", "assets/makara-cover.webp"],
   "engines": { "node": ">=18" }

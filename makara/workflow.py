@@ -74,6 +74,9 @@ class KnowledgeStore(Store):
         require(set(data.get('allowed_providers', [])) <= set(self.config.get('providers', ['openai', 'anthropic', 'honcho'])), 'Unknown provider')
         item = super().source(principal, data)
         if 'allowed_providers' not in item:
+            from .capture import is_orca_notice
+            if is_orca_notice(item):
+                item['origin'] = 'orca_notification'
             item['allowed_providers'] = data.get('allowed_providers', [])
             self.save('sources', item)
         return item
@@ -244,13 +247,17 @@ class KnowledgeStore(Store):
         self.scope(principal, source['scope'], 'delete')
         require(source['subject'] == principal['subject'], 'Subject mismatch', 403)
         from .memory import invalidate
-        # Invalidate all derived memory for the scope before deleting canonical source.
-        invalidate(self, source['scope'], source['subject'])
+        # Only sources approved for Honcho can enter a memory generation.
+        sent_to_memory = 'honcho' in source.get('allowed_providers', [])
+        if sent_to_memory:
+            invalidate(self, source['scope'], source['subject'])
         result = super().delete_source(principal, ident)
         from .memory import ensure_jobs
-        ensure_jobs(self, source['scope'])
+        if sent_to_memory:
+            ensure_jobs(self, source['scope'])
         # Receipts contain no source body; purge retries/proposals via source tombstone checks.
-        result['propagation'] = 'Local purge complete; external memory blocked until rebuild/deletion finishes'
+        result['propagation'] = ('Local purge complete; external memory blocked until rebuild/deletion finishes'
+                                 if sent_to_memory else 'Local purge complete; source excluded from Honcho')
         return result
 
     def dispatch(self, principal, action, data):

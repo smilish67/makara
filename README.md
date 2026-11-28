@@ -1,10 +1,12 @@
 # Makara
 
+<img src="plugins/makara/assets/makara-mark.png" width="64" height="64" alt="Makara · 물결이 만나는 펼친 책">
+
 ![짙은 남색 물결 속 마카라. 바다에서 발견한 조개와 산호 무늬가 오른쪽 종이 모형에 새겨져 있다.](assets/makara-cover.webp)
 
 **지난 프로젝트에서 왜 그 안을 골랐는지, 다음 프로젝트의 첫 시안에서 다시 써보세요.** Makara는 여러 에이전트가 프로젝트의 결정과 근거를 이어서 쓸 수 있게 하는 로컬 지식 서비스입니다. Markdown 위키와 선택적 대화 기억을 MCP로 제공하며, Codex에서는 플러그인으로 사용할 수 있습니다.
 
-[설치](#설치) · [작동 방식](#작동-방식) · [Honcho 연결](docs/INSTALL.md) · [첫 시안 운영 방식](docs/CONCEPT_WORKFLOW.md) · [릴리스](https://github.com/smilish67/makara/releases)
+[설치](#설치) · [새 환경에서 구성 고르기](docs/DISTRIBUTION.md) · [작동 방식](#작동-방식) · [Honcho 연결](docs/INSTALL.md) · [첫 시안 운영 방식](docs/CONCEPT_WORKFLOW.md) · [릴리스](https://github.com/Makara-space/makara/releases)
 
 ## 왜 만들었나요?
 
@@ -23,7 +25,7 @@ Windows PowerShell과 Linux 터미널에서 실행할 수 있습니다. Node.js 
 **MCP 클라이언트** — 사용하는 모델 제공자를 지정하면 로컬 stdio 연결 설정을 출력합니다. 예를 들어 Claude Code에서 Anthropic 모델을 쓸 때는 다음과 같습니다.
 
 ```sh
-npx --yes github:smilish67/makara#v0.4.1 --client mcp --provider anthropic
+npx --yes github:Makara-space/makara#v0.4.2 --client mcp --provider anthropic
 ```
 
 출력된 실행 명령을 클라이언트에 등록하면 프로젝트 위키와 허용된 기억을 조회하고, 지정한 작업 결과를 저장할 수 있습니다. [Claude Code·OpenCode 연결 예시](docs/INSTALL.md#다른-mcp-클라이언트에서-사용하기)
@@ -31,7 +33,7 @@ npx --yes github:smilish67/makara#v0.4.1 --client mcp --provider anthropic
 **Codex 플러그인** — Codex CLI가 설치된 환경에서 스킬과 대화 수집 훅까지 함께 등록합니다.
 
 ```sh
-npx --yes github:smilish67/makara#v0.4.1
+npx --yes github:Makara-space/makara#v0.4.2
 ```
 
 Codex 설치기는 로컬 Makara 서비스를 준비하고 Codex의 마켓플레이스에 플러그인을 등록합니다. 기존 서비스·vault·Honcho 연결이 있으면 재사용합니다. PowerShell에서 실행하면 PC 앱용 WSL 연결을 설정합니다. WSL 터미널에서 PC 앱용으로 설치하려면 끝에 `--windows-app`을 붙이세요. 설치 후 새 대화에서 `$makara:makara`를 선택할 수 있습니다. 훅 신뢰 확인이 표시되면 등록된 명령을 검토하세요.
@@ -58,10 +60,10 @@ Codex 설치기는 로컬 Makara 서비스를 준비하고 Codex의 마켓플레
 
 ## 개발과 라이선스
 
-Python 런타임은 표준 라이브러리를 사용합니다. 저장소에서 `python3 -m unittest discover -s tests -v`로 테스트를 실행할 수 있습니다. 로컬 설치 문제를 제보할 때는 실행 환경과 오류 메시지에서 인증정보를 지운 뒤 [이슈](https://github.com/smilish67/makara/issues)에 남겨주세요.
+Python 런타임은 표준 라이브러리를 사용합니다. 저장소에서 `python3 -m unittest discover -s tests -v`로 테스트를 실행할 수 있습니다. 로컬 설치 문제를 제보할 때는 실행 환경과 오류 메시지에서 인증정보를 지운 뒤 [이슈](https://github.com/Makara-space/makara/issues)에 남겨주세요.
 
 Makara는 [Apache License 2.0](LICENSE)으로 배포합니다. Honcho는 별도로 운영하는 선택적 서비스입니다.
 
-## 마카라 플라네타리움
+## 함께 쓰는 앱
 
-“자료를 조사하고 첫 시안을 만드는 데 각각 얼마나 썼을까?” 플라네타리움에서 Windows·Linux의 Codex, Claude Code, OpenCode 2 작업 기록을 시간순으로 펼치고, 서로 다른 에이전트가 이어서 한 일을 같은 작업으로 묶어 토큰 사용량을 볼 수 있습니다. 별도의 로컬 서비스이며 브라우저를 닫아도 Docker에서 계속 수집합니다. [설치와 사용법](docs/PLANETARIUM.md)
+오늘 할 일을 시간표에 놓고 싶으면 **Sekai**, 여러 에이전트가 지금 어디를 조사하는지 보고 싶으면 **Planetarium**에서 시작하세요. 두 화면은 같은 앱 저장소에서 개발합니다. 플러그인만 쓰는 환경에서도 위키를 읽고 정리할 수 있습니다. [Makara Sekai와 Planetarium](https://github.com/Makara-space/makara-sekai)

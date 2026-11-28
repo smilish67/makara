@@ -20,6 +20,41 @@ class MemoryTests(unittest.TestCase):
     def add(self,text='Original fact',key='m1'):
         return self.call('source',dict(scope='projects/demo',text=text,consent=True,idempotency_key=key,allowed_providers=['honcho','openai']))
 
+    def test_orca_envelope_is_history_only_and_legacy_generation_is_preserved(self):
+        def add_message(text, key):
+            return self.call('source',dict(scope='projects/demo', consent=True, idempotency_key=key,
+                allowed_providers=['honcho','openai'], conversation={'role':'user'}, text='[user] '+text))
+        notice = 'You have 1 orchestration message. Run `orca-ide orchestration check --run run_123`.'
+        quoted = add_message(notice + ' I prefer this command because it waits.', 'quoted')
+        alert = add_message(notice, 'notice')
+        self.assertEqual(alert.pop('origin'), 'orca_notification')
+        self.store.save('sources', alert)  # Simulate a source and workspace from before this change.
+        with patch.object(memory.Honcho, 'call', return_value={'representation':'sample','items':[]}) as network:
+            memory.process_jobs(self.store)
+            old = next(memory.states(self.store))
+            with self.store.lock():
+                memory.separate_orca_notices(self.store)
+                memory.separate_orca_notices(self.store)
+            self.assertEqual(json.loads(old.read_text())['status'], 'superseded')
+            self.assertEqual(self.store.load('sources', alert['id'])['text'], alert['text'])
+            memory.process_jobs(self.store)
+            result = self.call('memory', {'scope':'projects/demo','query':memory.DEFAULT_QUERY})
+            self.assertEqual(result['source_ids'], [quoted['id']])
+            self.assertFalse(any(c.args[0]=='DELETE' for c in network.call_args_list))
+            self.call('delete-source', {'id':quoted['id']})
+            self.assertEqual(json.loads(old.read_text())['status'], 'delete_pending')
+
+    def test_deleting_source_excluded_from_honcho_keeps_active_generation(self):
+        self.add()
+        with patch.object(memory.Honcho, 'call', return_value={'representation':'fact','items':[]}):
+            memory.process_jobs(self.store)
+        path = next(memory.states(self.store))
+        before = path.read_bytes()
+        excluded = self.call('source', dict(scope='projects/demo', text='wiki only',
+            consent=True, idempotency_key='wiki-only', allowed_providers=['openai']))
+        self.call('delete-source', {'id':excluded['id']})
+        self.assertEqual(path.read_bytes(), before)
+
     def test_wiki_edit_preserves_memory_and_source_history(self):
         source=self.add()
         query={'scope':'projects/demo','query':memory.DEFAULT_QUERY}

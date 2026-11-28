@@ -61,3 +61,18 @@ def sanitize(text):
     text=re.sub(r'(?im)^.*(?:api[_ -]?key|service[_ -]?key|cert[_ -]?key|password|token|비밀번호)\s*[=:]\s*[^\s]+.*$','[인증정보가 포함될 수 있는 줄 제외]',text)
     text=re.sub(r'(?i)\bBearer\s+[a-z0-9._-]+|\bsk-[a-z0-9_-]{16,}|\beyJ[a-zA-Z0-9_-]{15,}\.[a-zA-Z0-9_.-]+','[인증정보 제외]',text)
     return text
+
+# Match the entire Orca-generated envelope. Quoted commands and user commentary
+# stay available as evidence even when they mention the same run or terminal.
+_ORCA_NOTICE = re.compile(
+    r"You have (?:[0-9]+ orchestration messages?|orchestration messages)\.\s+"
+    r"Run `(?:orca-ide|orca-dev|orca) orchestration check"
+    r"(?: --run run_[A-Za-z0-9_-]+)?(?: --terminal term_[A-Za-z0-9_-]+)?`\."
+)
+
+
+def is_orca_notice(source):
+    role = source.get("conversation", {}).get("role")
+    text = source["text"]
+    return (role == "user" and text.startswith("[user] ")
+            and _ORCA_NOTICE.fullmatch(text[7:].strip()) is not None)

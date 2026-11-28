@@ -85,7 +85,7 @@ def eligible(store, principal, scope):
     for path in (store.private/'sources').glob('*.json'):
         source = json.loads(path.read_text())
         if source['scope'] != scope or source['subject'] != principal['subject']: continue
-        if source.get('memory_retired'): continue
+        if source.get('memory_retired') or source.get('origin') == 'orca_notification': continue
         if 'honcho' not in source.get('allowed_providers', []): continue
         try: store.available(principal, source)
         except Error: continue
@@ -234,7 +234,7 @@ def process_jobs(store):
                 # Block and purge any generation created after the original invalidation.
                 for generation_path in states(store):
                     generation=json.loads(generation_path.read_text())
-                    if generation['scope']==job['scope'] and generation['subject']==job['subject'] and generation['status']!='deleted' and not set(generation['source_ids']).issubset(live_ids):
+                    if generation['scope']==job['scope'] and generation['subject']==job['subject'] and generation['provider']==principal.get('provider','local') and generation['status'] in ('ready', 'building') and not set(generation['source_ids']).issubset(live_ids):
                         generation['status']='delete_pending'
                         atomic(generation_path,json.dumps(generation))
                 if not path.exists(): continue
@@ -282,6 +282,30 @@ def queue_status(store, principal):
         counts[item['status']]=counts.get(item['status'],0)+1
         if item['status'] != 'ready': oldest=min(oldest or item['created_at'],item['created_at'])
     return {'jobs':counts,'oldest_pending_at':oldest,'worker_concurrency':1,'blocks_canonical_reads':False}
+
+
+def separate_orca_notices(store):
+    """Run under the writer lock before serving. Keep original text and old workspaces."""
+    from .capture import is_orca_notice
+    marker = store.private / 'orca-notices-v1.json'
+    if marker.exists():
+        return
+    excluded = set()
+    for path in (store.private / 'sources').glob('*.json'):
+        source = json.loads(path.read_text())
+        if is_orca_notice(source):
+            excluded.add(source['id'])
+            if source.get('origin') != 'orca_notification':
+                source['origin'] = 'orca_notification'
+                store.save('sources', source)
+    for path in states(store):
+        generation = json.loads(path.read_text())
+        if generation['status'] == 'ready' and excluded.intersection(generation['source_ids']):
+            generation['status'] = 'superseded'
+            store.save('memory', generation)
+    # recall() compares the eligible fingerprint before returning any cached
+    # result. Explicit source deletion still invalidates superseded workspaces.
+    atomic(marker, json.dumps({'at': now(), 'notices': len(excluded)}))
 
 
 def migrate_legacy_history(store):
