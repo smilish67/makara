@@ -125,12 +125,12 @@ def prepare(home, args):
                 providers.append('honcho')
         for principal in config['principals'].values():
             actions = {'owner': ['read', 'write', 'approve', 'delete']}
-            if args.client == 'codex':
+            if args.client in ('auto', 'all', 'codex', 'agy'):
                 actions['agent-a'] = ['read', 'write']
             for action in actions.get(principal['id'], []):
                 if scope not in principal[action]:
                     principal[action].append(scope)
-        if args.client == 'codex':
+        if args.client in ('auto', 'all', 'codex', 'agy'):
             projects[str(root)] = dict(target, enabled=True, scope=scope, include_children=target.get('include_children', True),
                                        allowed_providers=providers)
             projects[str(root)].pop('project_root', None)
@@ -138,9 +138,9 @@ def prepare(home, args):
     changed = before != json.dumps(config, sort_keys=True)
     if changed:
         write_json(config_path, config)
-    if (root and args.client == 'codex') or not policy_file.exists():
+    if (root and args.client in ('auto', 'all', 'codex', 'agy')) or not policy_file.exists():
         write_json(policy_file, policy)
-    return changed, config, token_file
+    return changed, config, token_file, scope
 
 
 def start_service(home, config, changed):
@@ -177,67 +177,136 @@ def start_service(home, config, changed):
     return status
 
 
+def _install_skill(target_dir):
+    target_dir = Path(target_dir).expanduser()
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(REPO / 'plugins/makara/skills/makara', target_dir, dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns('__pycache__'))
+
+
+def _mcp_command(home, token_file, windows_app=False):
+    launcher = home / 'runtime/scripts/run_mcp.py'
+    launcher.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(REPO / 'scripts/run_mcp.py', launcher)
+    command = [sys.executable, str(launcher), '--home', str(home), '--token-file', str(token_file)]
+    if windows_app:
+        command = ['wsl.exe', '--distribution', os.environ['WSL_DISTRO_NAME'], '--user',
+                   Path.home().name, '--exec', *command]
+    return {'command': command[0], 'args': command[1:]}
+
+
+def _write_mcp_snippet(home, provider, server_cfg):
+    snippet = {'mcpServers': {'makara': server_cfg}}
+    output = home / f'mcp-{provider}.json'
+    write_json(output, snippet)
+    return output, snippet
+
+
+def _install_codex(home, destination, codex_bin, windows_app):
+    if windows_app:
+        distro = os.environ.get('WSL_DISTRO_NAME')
+        if not distro:
+            raise SystemExit('--windows-app runs inside the Windows app’s WSL distribution')
+        profile = subprocess.check_output(['powershell.exe', '-NoProfile', '-Command',
+                   "[Environment]::GetFolderPath('UserProfile')"], text=True).strip()
+        windows_home = subprocess.check_output(['wslpath', '-u', profile], text=True).strip()
+        subprocess.run([sys.executable, str(REPO / 'scripts/install_desktop_plugin.py'),
+                        '--windows-home', windows_home, '--distro', distro,
+                        '--codex-exe', codex_bin, '--wsl-codex-exe', codex_bin,
+                        '--service-home', str(home)], check=True)
+        return
+    subprocess.run([codex_bin, 'plugin', 'marketplace', 'add', str(destination)], check=True)
+    subprocess.run([codex_bin, 'plugin', 'add', 'makara@makara-local', '--json'], check=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--client', choices=['codex', 'mcp'], default='codex',
-                        help='Install the Codex plugin or generate a portable stdio MCP connection')
+    parser.add_argument('--client', choices=['auto', 'all', 'codex', 'agy', 'claude', 'opencode', 'gemini', 'mcp'], default='auto',
+                        help='Target agent client (default: auto-detect installed agents and universal skills)')
     parser.add_argument('--provider', help='Model provider allowed to read this MCP connection')
-    parser.add_argument('--project-dir', type=Path, help='Select a project scope (also opts into automatic capture for Codex)')
+    parser.add_argument('--project-dir', type=Path, help='Select a project scope (also opts into automatic capture where supported)')
     parser.add_argument('--vault', type=Path, help='Markdown directory on first installation')
     parser.add_argument('--honcho-url', help='Honcho API base URL, without /v3')
     parser.add_argument('--honcho-token-file', type=Path, help='Path to bearer token on the service machine')
     parser.add_argument('--allow-remote', action='store_true', help='Allow sending selected project data to a remote HTTPS Honcho')
     parser.add_argument('--windows-app', action='store_true', help='Install into the Windows desktop app using WSL')
     args = parser.parse_args()
-    codex = shutil.which('codex')
-    if args.client == 'mcp':
-        if not re.fullmatch(r'[a-z][a-z0-9_-]{0,39}', args.provider or '') or args.provider in {'local', 'owner', 'honcho'}:
-            parser.error('--client mcp requires --provider with the actual model provider, e.g. anthropic')
-    elif args.provider:
-        parser.error('--provider applies to --client mcp')
-    elif not codex:
-        parser.error('Install Codex for its plugin or choose --client mcp --provider PROVIDER')
+    if args.provider and (not re.fullmatch(r'[a-z][a-z0-9_-]{0,39}', args.provider) or args.provider in {'local', 'owner', 'honcho'}):
+        parser.error('--provider must be a valid model provider name, e.g. anthropic, google, openai')
+    if args.client == 'mcp' and not args.provider:
+        parser.error('--client mcp requires --provider with the actual model provider, e.g. anthropic')
+    tools = {name: shutil.which(name) for name in ('codex', 'agy', 'claude', 'opencode', 'gemini')}
+    if args.client in ('codex', 'agy', 'claude', 'opencode') and not tools[args.client]:
+        parser.error(f'{args.client} CLI not found on PATH; use --client auto or --client mcp --provider PROVIDER')
     home = Path(os.environ.get('MAKARA_HOME', Path.home() / '.local/share/makara')).expanduser().resolve()
     home.mkdir(parents=True, exist_ok=True, mode=0o700)
     with (home / '.install.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        changed, config, token_file = prepare(home, args)
+        changed, config, token_file, scope = prepare(home, args)
         runtime = home / 'runtime/makara'
         shutil.copytree(REPO / 'makara', runtime, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
+        destination = home / 'plugin-marketplace'
+        build(destination, archive=False)
         status = start_service(home, config, changed)
-        if args.client == 'mcp':
-            identity = Client(home, token_file).request('status', {})
-            if identity.get('provider') != args.provider:
-                raise SystemExit('Restart Makara to load the selected provider identity')
-            launcher = home / 'runtime/scripts/run_mcp.py'
-            launcher.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(REPO / 'scripts/run_mcp.py', launcher)
-            command = [sys.executable, str(launcher), '--home', str(home), '--token-file', str(token_file)]
-            if args.windows_app:
-                command = ['wsl.exe', '--distribution', os.environ['WSL_DISTRO_NAME'], '--user',
-                           Path.home().name, '--exec', *command]
-            snippet = {'mcpServers': {'makara': {'command': command[0], 'args': command[1:]}}}
-            output = home / f'mcp-{args.provider}.json'
-            write_json(output, snippet)
+
+        targets = [args.client] if args.client not in ('auto', 'all') else [k for k, v in tools.items() if v]
+        installed = []
+        if not targets:
+            provider = args.provider or 'openai'
+            tf = mcp_identity(home, config, provider, scope)
+            write_json(home / 'config.json', config)
+            _install_skill('~/.agents/skills/makara')
+            output, snippet = _write_mcp_snippet(home, provider, _mcp_command(home, tf, args.windows_app))
+            print(f'Universal skill installed to ~/.agents/skills/makara')
             print(f'MCP connection settings: {output}')
             print(json.dumps(snippet, ensure_ascii=False, indent=2))
-        elif args.windows_app:
-            distro = os.environ.get('WSL_DISTRO_NAME')
-            if not distro:
-                parser.error('--windows-app runs inside the Windows app’s WSL distribution')
-            profile = subprocess.check_output(['powershell.exe', '-NoProfile', '-Command',
-                       "[Environment]::GetFolderPath('UserProfile')"], text=True).strip()
-            windows_home = subprocess.check_output(['wslpath', '-u', profile], text=True).strip()
-            subprocess.run([sys.executable, str(REPO / 'scripts/install_desktop_plugin.py'),
-                            '--windows-home', windows_home, '--distro', distro,
-                            '--codex-exe', codex, '--wsl-codex-exe', codex,
-                            '--service-home', str(home)], check=True)
-        else:
-            destination = home / 'plugin-marketplace'
-            build(destination, archive=False)
-            subprocess.run([codex, 'plugin', 'marketplace', 'add', str(destination)], check=True)
-            subprocess.run([codex, 'plugin', 'add', 'makara@makara-local', '--json'], check=True)
-        print(f"Makara ready. Vault: {config['vault']}. Honcho enabled: {status['memory_enabled']}.")
+            installed.append('universal-mcp')
+        for target in targets:
+            if target == 'mcp':
+                identity = Client(home, token_file).request('status', {})
+                if identity.get('provider') != args.provider:
+                    raise SystemExit('Restart Makara to load the selected provider identity')
+                output, snippet = _write_mcp_snippet(home, args.provider, _mcp_command(home, token_file, args.windows_app))
+                print(f'MCP connection settings: {output}')
+                print(json.dumps(snippet, ensure_ascii=False, indent=2))
+                installed.append('mcp')
+            elif target == 'codex':
+                _install_codex(home, destination, tools['codex'], args.windows_app)
+                installed.append('codex')
+            elif target == 'agy':
+                subprocess.run([tools['agy'], 'plugin', 'install', str(destination / 'plugins/makara')], check=True)
+                subprocess.run([tools['agy'], 'plugin', 'enable', 'makara'], check=False)
+                installed.append('agy')
+            elif target == 'claude':
+                provider = args.provider or 'anthropic'
+                tf = mcp_identity(home, config, provider, scope)
+                write_json(home / 'config.json', config)
+                cfg = _mcp_command(home, tf, args.windows_app)
+                _install_skill('~/.claude/skills/makara')
+                _write_mcp_snippet(home, provider, cfg)
+                subprocess.run([tools['claude'], 'mcp', 'add-json', 'makara', json.dumps(cfg)], check=False)
+                installed.append('claude')
+            elif target == 'opencode':
+                provider = args.provider or 'openai'
+                tf = mcp_identity(home, config, provider, scope)
+                write_json(home / 'config.json', config)
+                cfg = _mcp_command(home, tf, args.windows_app)
+                _install_skill('~/.config/opencode/skills/makara')
+                _write_mcp_snippet(home, provider, cfg)
+                subprocess.run([tools['opencode'], 'mcp', 'add', 'makara', '--', cfg['command'], *cfg['args']], check=False)
+                installed.append('opencode')
+            elif target == 'gemini':
+                provider = args.provider or 'google'
+                tf = mcp_identity(home, config, provider, scope)
+                write_json(home / 'config.json', config)
+                cfg = _mcp_command(home, tf, args.windows_app)
+                _install_skill('~/.gemini/skills/makara')
+                output, _ = _write_mcp_snippet(home, provider, cfg)
+                print(f'Gemini skill installed to ~/.gemini/skills/makara; MCP config: {output}')
+                installed.append('gemini')
+        if args.client in ('auto', 'all'):
+            _install_skill('~/.agents/skills/makara')
+        print(f"Makara ready ({', '.join(installed)}). Vault: {config['vault']}. Honcho enabled: {status['memory_enabled']}.")
 
 
 if __name__ == '__main__':

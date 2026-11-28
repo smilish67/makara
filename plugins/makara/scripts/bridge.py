@@ -11,8 +11,13 @@ from makara.core import Error
 
 def main():
     home=Path(os.environ.get('MAKARA_HOME',str(Path.home()/'.local/share/makara')))
-    token=home/'agent-a.token'
-    action=sys.argv[1] if len(sys.argv)>1 else 'status'
+    argv=sys.argv[1:]
+    token_override=os.environ.get('MAKARA_TOKEN_FILE')
+    if len(argv)>=2 and argv[0]=='--token-file':
+        token_override=argv[1]
+        argv=argv[2:]
+    token=Path(token_override).expanduser() if token_override else home/'agent-a.token'
+    action=argv[0] if argv else 'status'
     if action=='mcp':
         from makara.mcp import run
         run(Client(home,token));return
@@ -34,7 +39,7 @@ def main():
                           'target':resolve_target(policy,os.getcwd()),'excluded_paths':policy.get('excluded_paths',[]),
                           'wiki_updates':'user_requested'},ensure_ascii=False));return
     if action=='status': result=client.request('status',{})
-    elif action=='request': result=client.submit(sys.argv[2],json.load(sys.stdin))
+    elif action=='request': result=client.submit(argv[1],json.load(sys.stdin))
     else: raise SystemExit('Use status, capture-status, request ACTION, mcp, or hook')
     print(json.dumps(result,ensure_ascii=False))
 

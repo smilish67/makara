@@ -39,3 +39,16 @@ class HookTests(unittest.TestCase):
         handle(self.home,event)
         handle(self.home,dict(event,cwd='/allowed-sibling'))
         self.assertEqual(len(list((self.home/'outbox').rglob('*.json'))),1)
+    def test_antigravity_pre_invocation_and_session_start(self):
+        unregistered=handle(self.home,{'cwd':'/private','hookEventName':'SessionStart'})
+        self.assertIn('injectSteps',unregistered)
+        self.assertIn('자동 저장되지 않습니다',unregistered['injectSteps'][0]['systemMessage']['systemMessage'])
+        event={'cwd':'/allowed','conversationId':'conv-1','invocationNum':2,'hookEventName':'PreInvocation','lastUserInput':'Hello Antigravity'}
+        with patch.object(Client,'request',side_effect=AssertionError('Capture must not access network')):
+            result=handle(self.home,event)
+            handle(self.home,event)
+        self.assertEqual(result,{})
+        jobs=list((self.home/'outbox').rglob('*.json'))
+        self.assertEqual(len(jobs),1)
+        item=json.loads(jobs[0].read_text())
+        self.assertEqual(item['data']['conversation'],{'session_id':'conv-1','turn_id':2,'role':'user'})

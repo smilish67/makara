@@ -26,4 +26,8 @@ assert status['ready'] and status['identity']=='agent-a'
 assert status['capture']['wiki_updates']=='user_requested'
 assert (root/'skills/makara/SKILL.md').exists()
 assert (root/'hooks/hooks.json').exists()
+assert (root/'hooks.json').exists()
+assert (root/'mcp_config.json').exists()
+assert (root/'.mcp.json').exists()
+assert (root/'.claude-plugin/plugin.json').exists()
 print('PASS: installed plugin MCP initialize, tools, authenticated status and requested-update policy from unrelated cwd')
