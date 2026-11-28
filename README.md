@@ -4,7 +4,7 @@
 
 ![짙은 남색 물결 속 마카라. 바다에서 발견한 조개와 산호 무늬가 오른쪽 종이 모형에 새겨져 있다.](assets/makara-cover.webp)
 
-**지난 프로젝트에서 왜 그 안을 골랐는지, 다음 프로젝트의 첫 시안에서 다시 써보세요.** Makara는 여러 에이전트가 프로젝트의 결정과 근거를 이어서 쓸 수 있게 하는 로컬 지식 서비스입니다. Markdown 위키와 선택적 대화 기억을 MCP로 제공하며, Codex에서는 플러그인으로 사용할 수 있습니다.
+**지난 프로젝트에서 왜 그 안을 골랐는지, 다음 프로젝트의 첫 시안에서 다시 써보세요.** Makara는 여러 에이전트가 프로젝트의 결정과 근거를 이어서 쓸 수 있게 하는 로컬 지식 서비스입니다. Markdown 위키와 선택적 대화 기억을 MCP로 제공하며, Antigravity·Codex·Claude Code·OpenCode·Gemini CLI 등 다양한 에이전트에서 플러그인 또는 스킬/MCP로 사용할 수 있습니다.
 
 [설치](#설치) · [새 환경에서 구성 고르기](docs/DISTRIBUTION.md) · [작동 방식](#작동-방식) · [Honcho 연결](docs/INSTALL.md) · [첫 시안 운영 방식](docs/CONCEPT_WORKFLOW.md) · [릴리스](https://github.com/smilish67/makara/releases)
 
@@ -22,21 +22,31 @@
 
 Windows PowerShell과 Linux 터미널에서 실행할 수 있습니다. Node.js 18+, Git, Python 3.11+가 필요합니다. Windows는 기본 WSL 배포판에서 서비스를 실행합니다.
 
-**MCP 클라이언트** — 사용하는 모델 제공자를 지정하면 로컬 stdio 연결 설정을 출력합니다. 예를 들어 Claude Code에서 Anthropic 모델을 쓸 때는 다음과 같습니다.
+**에이전트 자동 설치 (권장)** — 로컬 Makara 서비스를 준비하고, 설치된 에이전트(Antigravity `agy`, Codex, Claude Code, OpenCode, Gemini CLI)에 맞춰 플러그인·스킬·MCP를 자동으로 등록합니다. 감지된 CLI가 없으면 범용 스킬(`~/.agents/skills/makara`)과 휴대용 MCP 설정을 생성합니다.
 
 ```sh
-npx --yes github:smilish67/makara#v0.4.3 --client mcp --provider anthropic
+npx --yes github:smilish67/makara
+```
+
+특정 에이전트만 지정하려면 `--client` 옵션을 사용하세요(`auto`, `all`, `agy`, `codex`, `claude`, `opencode`, `gemini`, `mcp` 지원).
+
+```sh
+# Antigravity (agy)만 설치
+npx --yes github:smilish67/makara --client agy
+
+# Claude Code만 설치
+npx --yes github:smilish67/makara --client claude
+```
+
+**MCP 클라이언트 수동 연결** — 사용하는 모델 제공자를 지정하면 로컬 stdio 연결 설정을 출력합니다. 예를 들어 Anthropic 모델을 쓸 때는 다음과 같습니다.
+
+```sh
+npx --yes github:smilish67/makara --client mcp --provider anthropic
 ```
 
 출력된 실행 명령을 클라이언트에 등록하면 프로젝트 위키와 허용된 기억을 조회하고, 지정한 작업 결과를 저장할 수 있습니다. [Claude Code·OpenCode 연결 예시](docs/INSTALL.md#다른-mcp-클라이언트에서-사용하기)
 
-**Codex 플러그인** — Codex CLI가 설치된 환경에서 스킬과 대화 수집 훅까지 함께 등록합니다.
-
-```sh
-npx --yes github:smilish67/makara#v0.4.3
-```
-
-Codex 설치기는 로컬 Makara 서비스를 준비하고 Codex의 마켓플레이스에 플러그인을 등록합니다. 기존 서비스·vault·Honcho 연결이 있으면 재사용합니다. PowerShell에서 실행하면 PC 앱용 WSL 연결을 설정합니다. WSL 터미널에서 PC 앱용으로 설치하려면 끝에 `--windows-app`을 붙이세요. 설치 후 새 대화에서 `$makara:makara`를 선택할 수 있습니다. 훅 신뢰 확인이 표시되면 등록된 명령을 검토하세요.
+기존 서비스·vault·Honcho 연결이 있으면 재사용합니다. PowerShell에서 실행하면 PC 앱용 WSL 연결을 설정합니다. WSL 터미널에서 PC 앱용으로 설치하려면 끝에 `--windows-app`을 붙이세요. 훅 신뢰 확인이 표시되면 등록된 명령을 검토하세요.
 
 **새 설치에서는 Honcho와 자동 수집을 선택할 수 있습니다.** 한 프로젝트의 새 대화만 수집하려면 설치 명령에 `--project-dir "/path/to/project"`를 붙이세요. Windows에서는 WSL에서 보이는 폴더 경로를 사용합니다. Node 없이 설치하기, vault 위치 선택, 기존 Honcho 연결은 [설치 안내](docs/INSTALL.md)에 있습니다.
 
@@ -44,7 +54,7 @@ Codex 설치기는 로컬 Makara 서비스를 준비하고 Codex의 마켓플레
 
 | 구성 | 맡은 일 |
 |---|---|
-| 수집 훅 | 허용한 Codex 세션의 사용자 입력과 최종 답변을 큐에 넣습니다. 세션 시작 시 프로젝트 맥락을 불러옵니다. |
+| 수집 훅 | 허용한 에이전트 세션(Antigravity·Codex 등)의 사용자 입력과 응답을 큐에 넣습니다. 세션 시작 시 프로젝트 맥락을 불러옵니다. |
 | Makara 서비스와 MCP | 에이전트의 권한을 확인하고 해당 프로젝트의 근거와 문서를 조회하거나 갱신합니다. |
 | Honcho · 선택 사항 | 전송이 허용된 대화로 선택 이유와 판단 패턴을 추론합니다. 별도 워커에서 처리하며, 그 해석에는 출처와 적용 조건이 필요합니다. |
 | Markdown 위키 | 프로젝트의 결정·이유·진행 상태를 사람이 읽고 고칠 수 있게 보관합니다. Obsidian에서 vault로 열 수 있습니다. |
