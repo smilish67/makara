@@ -13,16 +13,17 @@ Linux 또는 Windows + WSL에서 Node.js 18+, Git, Python 3.11+를 준비한다.
 
 두 번째 예시의 제공자는 실제 사용하는 모델 제공자에 맞춘다. 설치기가 출력한 stdio 명령과 인자를 클라이언트에 등록한다. 위키와 결정 기록부터 사용한 뒤, 자동 수집이 필요하면 허용할 프로젝트 폴더를 지정한다. Honcho를 선택하면 Honcho v3 서버와 워커를 별도로 준비한다. [설치 옵션과 호스트별 연결](INSTALL.md)
 
-기존 Makara 저장소에 포함됐던 초기 Planetarium은 독립 설치할 수 있다. Docker와 Compose가 실행 중인 Linux/WSL에서 아래 명령으로 이번에 확인한 버전을 재현한다. 설치기는 이 사용자 계정에서 발견한 지원 에이전트의 로그를 읽어 로컬 색인을 만든다.
+Planetarium만 쓰려면 Docker Compose와 Python 3가 있는 Linux 또는 WSL에서 앱 저장소를 받는다. 설치하면 현재 계정에서 발견한 지원 에이전트의 기록이 로컬에서 색인된다.
 
 ```sh
-git clone https://github.com/Makara-space/makara.git
-cd makara
-git checkout --detach e9bcba6cb092d6c04a4e96a84a27d5f12baf26e8
+git clone https://github.com/Makara-space/makara-sekai.git
+cd makara-sekai
 python3 planetarium/install.py
 ```
 
-공개 태그 v0.4.1로 만든 새 Linux 컨테이너에서 외부 네트워크와 기존 사용자 홈 없이 MCP 설치, 초기화, 도구 13개 조회와 인증된 상태 조회를 검증했다. 이 태그에는 Sekai와 Planetarium이 없다. 위 커밋에는 초기 Planetarium이 있다. 이후 앱 소스는 [Sekai 저장소](https://github.com/Makara-space/makara-sekai)에서 받는다. 최신 3D 관제와 Sekai 데스크톱 전체의 신규 PC 설치는 공개 릴리스로 검증되지 않았다.
+Sekai 시간표와 비서는 같은 앱 저장소의 [실행 안내](https://github.com/Makara-space/makara-sekai/blob/main/sekai/README.md)를 따른다. 기본 Compose 구성에는 Core 파일과 Hermes 요청·중계 소켓이 필요하다. Windows 바탕화면은 별도 선택 사항이다. 통합 원클릭 설치는 현재 제공 범위에 들어 있지 않다.
+
+v0.4.2는 새 npm 캐시에서 GitHub 주소로 받아, 빈 Linux 컨테이너에서 기존 홈이나 외부 네트워크 없이 MCP 설치를 확인했다. 플러그인 ZIP은 별도로 인증된 MCP 연결을 확인했다. 초기 Planetarium을 재현해야 한다면 [분리 전 커밋](https://github.com/Makara-space/makara/tree/e9bcba6cb092d6c04a4e96a84a27d5f12baf26e8)을 사용할 수 있다.
 
 ## 구성별 정본과 의존성
 
@@ -53,23 +54,9 @@ python3 planetarium/install.py
 
 바탕화면 셸, 캐릭터, 공통 탐색, 화면 간 전환 문제는 **Sekai**에서 수정한다. “어떤 원문을 어떤 에이전트에게 보여줄 것인가”와 MCP 호환성은 **Makara**에서 수정한다. 예를 들어 공개 범위가 바뀌면 Core가 검사하고 Sekai는 거부 상태를 화면에 표시한다. 모델 제공자는 비서 실행기와 별도 설정으로 둔다. Plane은 티켓 API, Honcho는 기억 API로 연결한다.
 
-### 두 원격을 함께 설치하는 방법
+### 버전과 문제 제보
 
-첫 배포에서는 **Sekai 릴리스가 전체 설치의 진입점**을 맡는 방향을 권한다. 릴리스마다 호환되는 Makara 태그 또는 커밋, 사용 이미지의 버전, 지원 OS를 명시한다. 설치기는 기존 Core의 상태·인증·호환성을 먼저 확인하고, 비어 있는 환경에서 필요한 구성만 준비한다. 새 PC의 키와 프로젝트 경로를 받아 로컬 연결 설정을 발급한다. 이미 운영하는 Core를 새 설치로 덮어쓰면 안 된다.
-
-- **지식 플러그인만** 선택하면 기존 Makara 설치기를 사용한다.
-- **활동 관제만** 선택하면 앱 저장소에서 Planetarium을 실행한다. 위키, 모델 계정, Plane이 필요하지 않다.
-- **비서와 바탕화면**은 Sekai와 필요한 Core 연결을 설치한다. Planetarium 탭, Windows 위젯, Plane 연결, 비서 실행기, 개인화 기억은 원하는 기능에 맞춰 고른다. 직접 모델 호출과 Hermes 실행은 각각 새 환경에서 검증한 뒤 설치 메뉴에 표시한다.
-- 두 저장소의 연결 기준은 버전이 있는 인터페이스다. 현재 Sekai Compose가 직접 마운트하는 `sources`와 토큰 경로, Hermes의 별도 relay 소켓까지 의존성에 포함한다. Core 원문 감지는 장기적으로 권한을 검사하는 변경 피드로 연결하는 편이 경로 이전과 접근 제어에 유리하다.
-
-GitHub에서 보이는 소속을 묶고 싶으면 **Organization**, 여러 저장소의 이슈·PR을 한 보드에서 보려면 **Projects**를 쓸 수 있다. 조직 프로필에서 두 제품으로 연결하며, 버전과 설치 절차는 각 제품 저장소에서 관리한다. **Git submodule**은 다른 저장소의 특정 커밋을 소스 트리에 고정한다. 설치할 서비스·데이터·권한을 선택하는 역할은 Sekai 설치기가 맡도록 한다. 세 번째 `makara-space` 원격은 공통 배포물을 별도 팀이나 독립 일정으로 관리할 필요가 생길 때 검토한다. [Organizations](https://docs.github.com/en/organizations/collaborating-with-groups-in-organizations/about-organizations) · [Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/about-projects) · [Git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules)
-
-### 릴리스 유지관리 절차
-
-1. 파일과 테스트를 위 두 소유자로 분류한다. 예를 들어 `deploy/Dockerfile`은 Core에, `deploy/hermes/`는 Sekai에 둔다. 두 저장소 모두 공개할 파일과 Git 이력, 에셋 출처를 검토하고 개인 운영 기록을 예제 설정으로 바꾼다.
-2. 현재 Core에 필요한 변경을 기존 공개 저장소의 깨끗한 기준점에서 준비한다. 검증한 Core 태그를 앱 저장소가 참조한다.
-3. 검토한 Sekai와 Planetarium을 앱 저장소에 함께 담고, 설치 프로필과 버전 조합을 빈 환경에서 시험한다. 최소 설치는 MCP 조회, Sekai는 임시 대화·일정 왕복, Planetarium은 예시 로그 표시, 선택 연동은 누락·실패·성공 상태를 확인한다.
-4. 앱의 첫 공개 태그가 동작하면 기존 Makara README와 초기 Planetarium 설치 경로에 이전 안내를 둔다. 기존 태그와 사용 중인 설치 명령을 유지한다. 사용자 위키, 로컬 일정, 에이전트 로그와 키는 별도 비공개 이전 대상으로 취급한다.
+위키의 권한·훅·MCP 연결은 [Makara 이슈](https://github.com/Makara-space/makara/issues), 시간표·캐릭터·관제는 [Sekai 이슈](https://github.com/Makara-space/makara-sekai/issues)에서 다룬다. 설치한 버전은 Core의 릴리스 태그와 앱 저장소의 커밋을 각각 기록한다. 새 환경에서는 각 서비스에 새 키를 발급한다. 개인 데이터를 새 PC로 옮기는 일은 소스 설치와 별개다.
 
 ## 공개할 소스와 외부 구성요소
 
